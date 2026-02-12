@@ -184,6 +184,6 @@ cookies_clean %>%
 
 
 
-[Part 2] Write 2-3 sentences about what you can learn from that plot and what directions you might want to investigate from here.
+[Part 2] Wri te 2-3 sentences about what you can learn from that plot and what directions you might want to investigate from here.
 
 From this plot, you can see which ingredients have the best overall rating. I had to remove the NA's for the code to work, which may unfairly affect the ingredients that have fewer NA's. I also could limit the scope to ingredients that appear in 15 or 20+ recipes instead of 5. That might lead to a better result. But for now, I can conclude that pudding mix and white chocolate chip are the highest-rated ingredients
