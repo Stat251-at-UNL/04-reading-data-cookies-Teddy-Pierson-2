@@ -2,7 +2,7 @@
 title: "Chocolate Chip Cookies"
 execute:
   error: true
-author: "Your Name"
+author: "Teddy Pierson"
 output: html_document
 ---
 
@@ -12,11 +12,14 @@ First, read in the CSV data of cookie ingredients.
 Make sure that your end-result data has appropriate types for each column - these should match the types provided in the documentation in the README.md file.
 
 ```{r}
-
+cookies <- read.csv("choc_chip_cookie_ingredients.csv")
+library(reticulate)
+py_require(c("pandas"))
 ```
 
 ```{python}
-
+import pandas as pd
+cookies = pd.read_csv("choc_chip_cookie_ingredients.csv")
 ```
 
 
@@ -30,15 +33,15 @@ Exploratory data analysis is the process of getting familiar with your dataset. 
 > 4.  Where are the outliers and why should you care about them?
 > 5.  How can you add, change or remove features to get more out of your data?
 
-### Generating Questions
+### GeneRating Questions
 
 Generate at least 5 questions you might explore using this database of cookie ingredients.
 
-1.
-2. 
-3. 
-4. 
-5. 
+1. Which ingredients have the highest Rating?
+2. Does a higher quantity of ingredient lead to a higher Rating?
+3. Which measurement (cups, teaspsoon, tablespoon) occurs most often?
+4. Which recipe source has the highest average Rating?
+5. How many Ratings have a value of NA?
 
 
 ### Skimming the Data
@@ -53,26 +56,97 @@ Install both packages, and read the package documentation ([R](https://cran.r-pr
 
 
 ```{r}
-
+library(skimr)
+skim1 <- skim(cookies)
+skim2 <- skim_tee(cookies)
+skim3 <- skim_without_charts(cookies)
+library(reticulate)
+py_require(c("skimpy", "numpy"))
 ```
 
 ```{python}
-
+from skimpy import skim
 ```
 
 [Part 2] Write 1-2 sentences about what you can tell from each summary display you generate. Did you discover anything new about the data?
 
-### Generating Tables
+I found the range of word lengths in the data, which was interesting. I also saw the histogram for the data, and I displayed the data without the histogram by using skim_without_charts
+
+### GeneRating Tables
 
 Another useful technique for exploratory data analysis is to generate summary tables. 
 You may want to use the `dplyr` package in R (`group_by` or `count` functions), as well as the `groupby` and `count` methods in Pandas. [Python example](https://sparkbyexamples.com/pandas/pandas-groupby-count-examples/), [R example](https://dplyr.tidyverse.org/reference/count.html)
 
-[Part 1] Using R and Python, generate a table that shows what **proportion** of recipes contain each type of ingredient, for the most common 20 ingredients.
+[Part 1] Using R and Python, generate a table that shows what **proportion** of recipes contain each type of ingredient, for the most common 20 ingredients
+.
+```{r}
+library(dplyr)
+total_recipes <- n_distinct(cookies$Recipe_Index)
+ingredient_props <- cookies %>%
+  distinct(Recipe_Index, Ingredient) %>%     
+  count(Ingredient, sort = TRUE) %>%    
+  mutate(proportion = n / total_recipes) %>%
+  slice_head(n = 20)
+
+ingredient_props
+```
+
+```{python}
+import pandas as pd
+ 
+total_recipes = cookies["Recipe_Index"].nunique()
+ 
+ingredient_props = (
+    cookies[["Recipe_Index", "Ingredient"]]
+    .drop_duplicates()
+    .groupby("Ingredient")
+    .size()
+    .reset_index(name="count")
+)
+ 
+ingredient_props["proportion"] = ingredient_props["count"] / total_recipes
+ 
+ingredient_props = ingredient_props.sort_values(
+    by="count", ascending=False
+).head(20)
+ 
+ingredient_props
+```
+
 
 [Part 2] Print out a character string that lists all of the ingredients that do not appear in at least 20 recipes.
 
+```{r}
+library(dplyr)
 
-(Delete this note, but you can include data values inline in markdown text by using backticks, at least in R. For instance, here is R's built in value for pi: `r pi`. Unfortunately, this doesn't work in python using the knitr markdown engine, but you can print the list out in python anyways using a code chunk.)
+ingredient_counts <- cookies %>%
+  distinct(Recipe_Index, Ingredient) %>%  
+  count(Ingredient)
+
+rare_ingredients <- ingredient_counts %>%
+  filter(n < 20) %>%
+  pull(Ingredient)
+
+paste(rare_ingredients, collapse = ", ")
+```
+
+```{python}
+ingredient_counts = (
+    cookies[["Recipe_Index", "Ingredient"]]   
+    .drop_duplicates()
+    .groupby("Ingredient")
+    .size()
+    .reset_index(name="count")
+)
+ 
+rare_ingredients = ingredient_counts[
+    ingredient_counts["count"] < 20
+]["Ingredient"]
+ 
+print(", ".join(rare_ingredients))
+
+```
+
 
 ### Visualization
 
@@ -80,4 +154,36 @@ Using whatever plotting system you are comfortable with in R or python, see if y
 
 [Part 1] Create at least one plot (it doesn't have to be pretty) that showcases an interesting facet of the data.
 
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(scales)
+
+cookies_clean <- cookies %>%
+  filter(!is.na(Rating))
+
+total_recipes_clean <- n_distinct(cookies_clean$recipe)
+
+cookies_clean %>%
+  group_by(Ingredient) %>%
+  filter(n() >= 5) %>%
+  ungroup() %>%
+  ggplot(aes(x = fct_reorder(Ingredient, Rating, median, na.rm = TRUE), 
+             y = Rating)) +
+  geom_boxplot(fill = "blue", alpha = 0.7, outlier.color = "red", outlier.alpha = 0.3) +
+  coord_flip() +
+  labs(
+    title = "Recipe Ratings by Ingredient",
+    subtitle = paste0("All Ingredients appearing in 5+ recipes"),
+    x = "Ingredient",
+    y = "Rating",
+    caption = "Box shows median and IQR; dots are outliers"
+  ) +
+  theme_minimal()
+```
+
+
+
 [Part 2] Write 2-3 sentences about what you can learn from that plot and what directions you might want to investigate from here.
+
+From this plot, you can see which ingredients have the best overall rating. I had to remove the NA's for the code to work, which may unfairly affect the ingredients that have fewer NA's. I also could limit the scope to ingredients that appear in 15 or 20+ recipes instead of 5. That might lead to a better result. But for now, I can conclude that pudding mix and white chocolate chip are the highest-rated ingredients
